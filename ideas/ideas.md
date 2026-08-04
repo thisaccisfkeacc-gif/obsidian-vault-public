@@ -154,5 +154,12 @@
   - Fix later; requires behavior change so deliberately left out of the `NativeWindowHelper` consolidation.
   - Related: `NativeWindowHelper.GetDpiScaleAtPoint(x, y)` is available for the fix.
 
+- [ ] **Secure Update Server & Anti-Browsing Protection** *(User Idea — 2026-08-03)*
+  - **Single Active Zip / Auto-Cleanup**: Overwrite or delete old zip files on the update server when publishing a new version so legacy builds are never accessible.
+  - **Secret / Random Zip Filenames**: Use unguessable randomized filenames (e.g. `PowerX-v550-a8f9c2d1.zip`) referenced only inside `latest.json`.
+  - **Disable Storage Folder Listing**: Ensure public bucket RLS / storage rules prevent directory index browsing.
+  - **Cloudflare R2 / External Hosting Fallback**: Use Cloudflare R2 or custom website hosting (`powerxkeys.com/updates/`) for zip packages > 50 MB with $0 bandwidth fees, while Supabase serves `latest.json`.
+
+
 
 

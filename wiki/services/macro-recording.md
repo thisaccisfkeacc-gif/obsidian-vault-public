@@ -123,3 +123,14 @@ Searches for the AHK runtime in priority order:
 - [[smooth-trace-engine]]
 - [[script-compiler]]
 - [[config-manager]]
+
+## Recent Improvements
+
+- **Smart Filter**: Persists text bundling and shortcut/chord detection directly into stored macro steps via the IsSmartFilter setting.
+- **Smart Delay Quantization**: Automatically rounds delay durations to clean, human-friendly values within BuildSmartSteps().
+- **Unified Smart Mode Toggle**: Lightbulb toggle controls both IsSmartMode (timeline view) and IsSmartFilter (recording persistence) across the timeline header and settings dashboard.
+- **Auto Smart Trim ✂️**: One-click median-based outlier detection that automatically caps long and abnormal delay steps.
+- **Manual Trim ⚙️**: Interactive trim panel with user-defined threshold/cap inputs and live affected-step preview.
+- **Wait for Window Auto-Detection**: Converts delay → window-switch patterns into WaitUntil (WindowActive) steps, displaying a 💡 hint badge when setting is OFF.
+- **Launch App Auto-Detection**: Snapshots active processes at recording start and auto-inserts FileLauncher steps for newly launched applications.
+- **Idle Gap Detection 💤**: Visual amber indicator badge on delay steps ≥ 5 seconds to highlight long idle pauses.
