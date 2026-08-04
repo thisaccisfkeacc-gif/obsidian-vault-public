@@ -1,7 +1,7 @@
 ---
 purpose: Session Handoff — Active context for the next agent
 project: PowerX Keys
-date: 2026-07-18
+date: 2026-08-04
 ---
 
 # HANDOFF.md
@@ -17,69 +17,79 @@ date: 2026-07-18
 
 ---
 
-## Current Work: Capture Overlay Overhaul (PENDING — Antigravity)
+## Current Work: "Auto Merge into Text" Context Menu Feature (DONE — build verified)
 
-### What's Been Decided
-Maaz likes the Exp capture style (blue box, arrow cursor, no magnifier for image capture). It should become the **permanent default** — not a toggle. The toggle checkbox and `UseSimpleCapture` setting should be removed entirely.
+### User Requirement (exact spec)
+- Right-click a Keyboard step that is **followed by a Text step** (delays between are OK) and choose **"Auto Merge into Text"**.
+- Merge result: one permanent Text step that combines the leading key + the text (e.g. `H` + `ello` → `Hello`).
+- The leading Key step and any intermediate Delay steps are removed.
+- Merge must persist to `CurrentMacro.MacroSteps` / SQLite.
+- Raw Mode support unchanged. **No emoji, no lightning icon on the menu item.**
 
-### What Needs to Be Done (Full direction already given to Antigravity)
+### What Was Done
+1. **XAML** — `PowerX.UI/Views/MacroEditorView.xaml` (context menu area):
+   - Added `MenuItem Header="Auto Merge into Text"` `Tag="AutoMergeIntoTextMenuItem"`.
+   - `Command="{Binding PlacementTarget.Tag.AutoMergeTextCommand}"`, `CommandParameter="{Binding}"`.
+   - Default `Collapsed`; `DataTrigger` shows it when the step is `Keyboard`.
+2. **Code-behind** — `PowerX.UI/Views/MacroEditorView.Events.cs`:
+   - In `OnTimelineContextMenuOpening`, look up the menu item by tag and toggle visibility via `vmAuto.CanAutoMergeIntoText(step)`.
+3. **Command** — `PowerX.UI/ViewModels/MacroEditorViewModel.Commands.cs`:
+   - Rewrote `AutoMergeTextCommand`:
+     - Scans **forward** (Keyboard→Text) and **backward** (Text→Keyboard) for the pair.
+     - Skips over Delay steps in between.
+     - Resolves `VirtualSourceSteps` into real source steps.
+     - Replaces the whole span with a single permanent `Text` step.
+     - `UndoRedoManager.PushState` for undo, sets `IsDirty`, calls `RefreshDisplaySteps`.
+4. **Helpers** — `PowerX.UI/ViewModels/MacroEditorViewModel.SmartView.cs`:
+   - Added `CanAutoMergeIntoText`, `AddResolvedSources`, `ComputeLeadingChar` (handles single char and `SHIFT + H` chords).
 
-1. **Make Exp style the only style:**
-   - Arrow cursor (no cross/plus) everywhere
-   - Sticky box: solid blue `#3B82F6`, 2px thickness
-   - Drag box: solid blue, no marching ants, no black underlay
-   - Pinned: yellow `#FBBF24`
-   - Remove all `UseExpStyle` / `useExpStyle` branching — just hardcode Exp style
-   - Keep the guide popup (useful for shortcuts)
+### Verified
+- `dotnet build` on `PowerX_Keys_V2.csproj` succeeded — 0 errors.
 
-2. **Remove the toggle completely:**
-   - `Models/AppConfig.cs` — delete `UseSimpleCapture`
-   - `ViewModels/MacroEditorViewModel.Properties.cs` — delete the property
-   - `ViewModels/MacroEditorViewModel.Capture.cs` — remove early-exit block, remove `expStyle` variable, remove `useExpStyle:` parameter from all overlay calls
-   - `Views/Templates/SearchTemplates.xaml` — remove checkbox from both gear menus (2 places)
-
-3. **Hide magnifier during image capture:**
-   - Magnifier only for pixel/hybrid modes
-   - In constructor or Loaded: `if (!CapturePixelOnly && !IsPixelModeScope && !HybridPixelMode) MagnifierBorder.Visibility = Collapsed`
-   - Skip magnifier update logic in MouseMove if hidden
-
-4. **Ctrl+Hold = hide sticky box:**
-   - While holding Ctrl, hide TrackingRectangle so user can see beneath
-   - Works in both floating and pinned states
-   - Release Ctrl → box reappears
-   - Add to guide popup: `("Ctrl Hold", "Peek beneath capture box")`
-
-### Files to Modify
-| File | What |
-|------|------|
-| `Views/CaptureOverlay.xaml.cs` | Main changes (style, magnifier, Ctrl feature) |
-| `Views/Templates/SearchTemplates.xaml` | Remove checkbox (2 places) |
-| `Models/AppConfig.cs` | Remove `UseSimpleCapture` |
-| `ViewModels/MacroEditorViewModel.Properties.cs` | Remove property |
-| `ViewModels/MacroEditorViewModel.Capture.cs` | Remove toggle logic + `useExpStyle` param |
+### Not Done Since Handoff
+- None — feature is complete and built.
 
 ---
 
-## Also In Progress: Bug Fixes (Antigravity)
+## In Progress: "Move Up" Mystery (UNRESOLVED — still investigating)
 
-### WIN_SMART Compiler Bug
-**Problem:** Main compiler (`ScriptCompilerService.cs` ~line 2068) doesn't handle `WIN_SMART:` scopes — only `"Smart Search"` and `"SMART_BOX"`. Falls through to static coords.
-**Fix:** Add `WIN_SMART:` to the condition, same as already done in `SingleStep.cs`.
+### User Report
+- On the timeline, manually add: 1) a Mouse block, 2) a Keyboard block.
+- Right-click the Keyboard block → **Move Up** → it does NOT move.
+- **Hint given by user:** "I just assigned key and it works." → Move Up works after the Keyboard step has a key assigned (i.e. it fails only for a **blank / un-configured Keyboard step**).
 
-### SourceWindowX/Y Null on Recapture
-**Problem:** Line ~218 in `MacroEditorViewModel.Capture.cs` unconditionally overwrites `step.SourceWindowX/Y` with `overlay.CapturedWindowX/Y` — which can be `null` on recapture.
-**Fix:** Only overwrite if overlay returned non-null:
-```csharp
-if (overlay.CapturedWindowX.HasValue && overlay.CapturedWindowY.HasValue)
-{
-    step.SourceWindowX = overlay.CapturedWindowX;
-    step.SourceWindowY = overlay.CapturedWindowY;
-}
-```
+### Investigation So Far (facts established)
+- Call chain: `MoveStepUpCommand` → `MoveSelectedSteps(o, -1)` → `MoveStepCore(step, direction)` in `MacroEditorViewModel.Core.cs` (~line 699).
+- `MoveStepCore` has two branches:
+  - **Virtual branch**: when `step.VirtualSourceSteps.Count > 0`.
+  - **Real branch**: `FindStepById` → `FindParentCollection` → `collection.IndexOf(realStep)` → `collection.Move(index, newIndex)`. Otherwise silently no-ops.
+- Right-click target comes from `OnTimelineContextMenuOpening` (`MacroEditorView.Events.cs` ~line 945): `rightClickedBulkStep = contextMenu.DataContext as MacroStep`.
+- `SetupBulkAwareness` single mode rebinds command + `CommandParameter = step`.
+- `MacroStep.Id` defaults to `Guid.NewGuid()`.
+- Batch-rule confusion: user said "just solve the mystery that I just assigned key and it works" — this is the KEY hint, not a second task.
 
-### Multi-Window Source Detection
-**Problem:** `Process.GetProcessesByName()` grabs the first match, not the actual window clicked on.
-**Fix:** Use the handle from `WindowFromPoint` (already available in overlay) to get the rect directly.
+### Leading Hypothesis (NOT confirmed)
+- A blank Keyboard step in Smart View may become a **virtual/wrapper step** (or one whose backing real step isn't present in `CurrentMacro.MacroSteps`), so `FindStepById` / `collection.IndexOf` silently fails and no move happens.
+- Once a key is assigned, the step becomes a real, findable step, and Move Up works.
+- Alternative: the blank step is found, its span/bundle changes after `RefreshDisplaySteps`, making the move visually imperceptible.
+
+### Next Steps (for next agent)
+1. Confirm why a blank Keyboard step differs in the Smart View / `MoveStepCore` path vs. one with a key assigned.
+   - Check `BuildSmartSteps` / `PopulateKeyboardBundling` in `MacroEditorViewModel.SmartView.cs` for how an un-valued Keyboard (`Value == null`, `KeyActionType = "Press"`) is emitted.
+   - Check whether `OriginalStep` is set (pass-through) or whether it gets wrapped/absorbed.
+   - Check `MapSnapshotToSteps` — when `OriginalStep != null` the SAME instance is re-added to the list; verify the right-clicked step is that same instance.
+2. If it's a virtual-step issue: make `MoveStepCore`/`MoveSelectedSteps` operate on the resolved real target (via `VirtualSourceSteps`, or the real collection) so blank Keyboard steps can be moved.
+3. Rebuild once and verify manually per user's repro (Mouse then Keyboard, right-click Keyboard, Move Up).
+
+### Files Involved
+| Topic | File |
+|-------|------|
+| Move logic | `MacroEditorViewModel.Core.cs` (`MoveStepCore`, `MoveSelectedSteps`, `FindStepById`, `FindParentCollection`) |
+| Context menu wiring | `MacroEditorView.Events.cs` (`OnTimelineContextMenuOpening`, `SetupBulkAwareness`) |
+| Smart View bundling | `MacroEditorViewModel.SmartView.cs` (`BuildSmartSteps`, `PopulateKeyboardBundling`, `MapSnapshotToSteps`) |
+| Model | `MacroItem.cs` (`MacroSteps`, `VirtualSourceSteps`, `KeyActionType` default "Press", `Id`) |
+| Menu items / Auto Merge | `MacroEditorView.xaml` |
+| Auto Merge command / helpers | `MacroEditorViewModel.Commands.cs`, `MacroEditorViewModel.SmartView.cs` |
 
 ---
 
@@ -91,16 +101,17 @@ if (overlay.CapturedWindowX.HasValue && overlay.CapturedWindowY.HasValue)
 ## Where Detailed Work Lives
 | Topic | File |
 |-------|------|
-| Image search audit | `wiki/bugs/exp-block-studio-audit.md` |
-| Image recognition docs | `wiki/features/image-recognition.md` |
-| Pinpoint capture history | `wiki/features/pinpoint-capture-investigation.md` |
-| Error handling plan | `wiki/features/error-handling-cleanup.md` |
+| Earlier "Move Up looked dead" multi-select fix | `wiki/log.md` (~line 240) |
+| Move to Top/Bottom removal | `wiki/log.md` (~line 272) |
 | Smart Mode edge cases | `wiki/features/smart-mode-audit.md` |
+| Smart Mode audit 3 (Move Up PASS note) | `audit_report_3.md` |
 
 ---
 
 ## Important Notes for Next Agent
-- The `UseSimpleCapture` setting and `UseExpStyle` code are still in the codebase — they need to be REMOVED (not kept as dead code)
-- The Exp style changes I (Kiro) made are partially applied — the other agent needs to clean them up and make them permanent
-- Ctrl is currently used for magnifier zoom (Ctrl+scroll) but since magnifier will be hidden for image capture, there's no conflict with Ctrl+hold to hide box
-- `ConfigureMagnifierStyle()` in CaptureOverlay currently overrides colors — when making Exp permanent, this method should only apply magnifier settings for pixel modes
+- Do NOT edit `.ahk` scripts directly — always edit `ScriptCompilerService.cs`.
+- Rebuild once after fixing something; auto-kill `PowerX Keys.exe` with `taskkill /f /im "PowerX Keys.exe"` if it blocks the build.
+- If any other build error appears, STOP and tell the user — do not auto-fix unless it was your own mistake.
+- Batch-task rule: if the user gives tasks one-by-one, explain each but do NOT fix until user says "go".
+- Fix silently where possible; brief plain-English summary at the end.
+- If not 100% sure a bug is real, do NOT touch it — tell the user in plain English instead.

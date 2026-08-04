@@ -96,21 +96,50 @@ Everything lives in **one single project** — Models, Views, ViewModels, Servic
 
 ## Progress Tracker
 
-**Overall Status:** ~65% Complete (`[███████░░░]`)
-**Current Stage:** Phase 2 Core, Database & All Backend Engine Services Extracted to PowerX.Services (Phase 3 UI Pending)
+**Overall Status:** ~90% Complete (`[█████████░]`)
+**Current Stage:** Phase 3 done — UI + App split out; only UI namespace cleanup and Phase 4 (tests) remain
 
 ### ✅ Done
 
-**PowerX.Core** — MacroItem.cs, AppConfig.cs, AppEnums.cs, AppConstants.cs, ActionModels.cs, AIChatMessage.cs, ObservableRangeCollection.cs, ViewModelBase.cs, VersionInfo.cs, UpdateInfo.cs, CaptureLibraryEntry.cs, IMacroDatabase.cs
+**PowerX.Core** (13 files) — Models (MacroItem, AppConfig, AppEnums, AppConstants, ActionModels, AIChatMessage, ObservableRangeCollection, ViewModelBase, VersionInfo, UpdateInfo, CaptureLibraryEntry, TemplateItem) + IMacroDatabase.cs. Compiles independently into `PowerX.Core.dll`.
 
-**PowerX.Services** — DebugLogger.cs, AutoUpdateService.cs, MacroDatabase.cs, ConfigManager.cs, ScriptCompilerService.cs (5287 lines), ScriptCompilerService.SingleStep.cs, MacroExecutionService.cs (3390 lines), RemoteServerService.cs (5607 lines), ScriptManager.cs, StopService.cs, AhkErrorSuppressor.cs, AIFallbackService.cs, DragComplexityAnalyzer.cs, ErrorHelper.cs, FindTextService.cs, NetworkTimeService.cs, PerformanceProxy.cs, ShortcutManager.cs, SmoothTraceEngine.cs, SupabaseAuthService.cs, SystemActionService.cs, TelemetryService.cs, UIElementCaptureService.cs, UndoRedoService.cs, WindowCaptureService.cs
+**PowerX.Services** (32 files) — MacroDatabase, MacroTransferManager, ScriptManager, TemplateDatabase, ScriptCompilerService (+ .SingleStep, .Helper), MacroExecutionService, RemoteServerService, HotKeyService, HotkeyCaptureHook, MacroRecordingService, UndoRedoService, ConfigManager, DebugLogger, AutoUpdateService, AhkErrorSuppressor, AIFallbackService, DragComplexityAnalyzer, ElevationHelper, ErrorHelper, FindTextService, NativeWindowHelper, NetworkTimeService, ServicesUIHooks, ShortcutManager, SmoothTraceEngine, StopService, SupabaseAuthService, TelemetryService, UIElementCaptureService, WindowCaptureService. Compiles independently into `PowerX.Services.dll`. References Core only.
 
-**PowerX.UI** — InverseBooleanToVisibilityConverter.cs, EqualityMultiConverter.cs
+**PowerX.UI** (73 files) — All XAML Views, ViewModels, Converters, Templates, Styles, plus UI-shell services (TrayIconManager, ThemeService, AlwaysOnTopOverlayService, EasterEggService, ServicesUIHooksUI). Compiles into `PowerX.UI.dll`. References Core + Services.
 
-### ❌ Remaining
+**PowerX.App (PowerX_Keys_V2)** — Slim exe: App.xaml, MainWindow, AssemblyInfo, FileAssociationService. No longer contains UI or service logic — only startup & wiring.
 
-**PowerX.Services (UI Shell Services)** — TrayIconManager.cs, ThemeService.cs, HotkeyCaptureHook.cs, HotKeyService.cs, MacroRecordingService.cs, AlwaysOnTopOverlayService.cs, EasterEggService.cs
+### ⏳ Remaining (small)
 
-**PowerX.UI** — 40+ XAML Views, 20+ ViewModels, All Templates
+**PowerX.UI** — Final namespace cleanup and consistency pass across the 73 files.
 
-**Last Updated:** July 24, 2026
+**PowerX.App (PowerX_Keys_V2)** — Thin out last few classes (e.g. FileAssociationService → decide final home).
+
+**Phase 4** — Unit test project for PowerX.Services (never started). This is the only planned phase with zero progress.
+
+### Notes
+- Actual layout is **5 projects**, not 4: Core, Services, UI, PowerX_Keys_V2 (exe), PowerX_Updater.
+- No test project exists anywhere in the repo as of this update.
+- A leftover WPF temp artifact (`PowerX.UI_3cjzbmw3_wpftmp.csproj`) sits in the PowerX.UI folder — harmless, safe to delete.
+
+---
+
+## ✅ Decision (Aug 4, 2026): How to Reach "100%"
+
+The physical split is effectively done. Remaining work is polish + new work. Ordered by priority:
+
+### 🟢 Do soon (low risk, real value)
+1. **UI namespace cleanup** — one coding pass across PowerX.UI (73 files) to make the split feel finished.
+2. **FileAssociationService** — decide its final home (currently the only odd class left in PowerX_Keys_V2 exe).
+
+### 🟡 Do later (real new work, not cleanup)
+3. **Phase 4 — Unit tests** — a brand-new test project for PowerX.Services (compiler output, execution logic). Treat as a **separate future task**, not something to block on during active feature work. Needs careful setup and dedicated time.
+
+### ⚪ Low priority / ignore
+4. **Delete `PowerX.UI_3cjzbmw3_wpftmp.csproj`** — harmless leftover; delete whenever convenient, not urgent.
+5. Don't obsess over a mathematical "100%" — heavy lifting is finished; the rest is polishing.
+
+**⚠️ No consensus reached on:**
+- Whether to do the namespace cleanup immediately or after current feature work stabilizes. **Default: proceed with cleanup on next available session.**
+
+**Last Updated:** August 4, 2026
