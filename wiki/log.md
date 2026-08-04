@@ -1,3 +1,13 @@
+## 2026-08-04 — Desktop mouse actions no longer fail window lookup (drag/click on the Desktop)
+- **Problem:** Recording a file drag/click on the Windows Desktop stored a target window title ("Desktop") and used window-relative coordinates. At compile/preview the script did `WinExist("Desktop")`/`WinActivate("Desktop")` — no window is named "Desktop", so lookup failed ("Window not found") or the drag landed relative to the wrong window.
+- **Recording fix** (`MacroRecordingService.cs`): new `IsActiveWindowDesktop()` guard on all 4 window-coordinate blocks (click, drag, trace×2). When the active window is the Desktop, mouse actions record as plain **Screen** coordinates (the Desktop spans the whole screen, so absolute coords are correct).
+- **Main compiler fix** (`ScriptCompilerService.cs`): new `IsDesktopCoordinateTitle()`; MouseClick and MouseTrace compile paths force `coordMode="Screen"` when the coordinate title is Desktop-like — defensive fallback so even pre-existing recordings with `CoordinateMode="Window"`+`"Desktop"` play back correctly instead of emitting the failing lookup.
+- **Preview fix** (`ScriptCompilerService.SingleStep.cs`): WindowAction preview now detects `IsDesktopWindow`/Desktop title and shows a success confirmation instead of `WinExist("Desktop")` → "Window NOT found".
+- Build verified: 0 errors.
+- Note: Task #8 Move Up/Down fix is verified-correct in code + empirically (test harness), pending user re-test of the fresh build.
+
+---
+
 ## 2026-08-04 — Recording widget: double-click resets position + expired screen fixes
 - **Expired screen polish:** `SubscriptionExpiredWindow` was forced always-on-top (`Topmost` in XAML + `App.xaml.cs`) with no drag support. Removed the Topmost settings, added mouse-drag to move it; replaced the purple inner border gradient (`#3D2B70→#1E1F2A`) and separator (`#2A1D55`) with neutral grays (`#1E1F2A`, `#28293A`) matching the app palette.
 - **Double-click reset on floating stop button:** `RecordingWidgetView.xaml` wired `PreviewMouseLeftButtonDown`; code-behind tracks click times and a second click within 300ms (anywhere except the stop button) calls `ResetPosition()` and instantly moves the widget back to its default spot (bottom-right of the working area). `ResetPosition()` (also used by the Settings reset button + settings double-click) now moves the open widget via a shared `MoveToDefaultPosition()` helper instead of only clearing the saved position; the Loaded handler reuses the same helper. No build ran (per user instruction) — pending user test.
