@@ -1,3 +1,9 @@
+## 2026-08-05 — Save button lights up on open (dirty-state race) fixed
+- **Symptom:** Double-clicking a saved macro opened the editor with the Save button already enabled, before any edit — as if a real change had been made.
+- **Root cause:** When opening an existing macro, `MarkSaved()` (which snapshots state + clears `IsDirty`) was scheduled via `Dispatcher.InvokeAsync(..., ContextIdle)` — a low priority that runs AFTER the loading churn. Any `GlobalStepChanged` raised during load (timeline refresh, name/metadata validations) re-entered `ExecuteGlobalStepChanged` while `_savedSnapshot` was still null → `IsStateEqualToSaved()` returned false → `IsDirty = true`.
+- **Fix:** New `_suppressDirtyCheck` flag in `MacroEditorViewModel`. The open-macro constructor now sets it + calls `MarkSaved()` synchronously (snapshot taken immediately, killing the null-snapshot window); `ExecuteGlobalStepChanged` returns early while suppressed; the existing ContextIdle block clears the flag as the final "opening is done" release. Save flow unaffected (it navigates away from the editor).
+- **Files:** `PowerX.UI/ViewModels/MacroEditorViewModel.cs`, `MacroEditorViewModel.Properties.cs`. Build verified: 0 errors (pre-existing warnings only).
+
 ## 2026-08-05 — Warning dot on empty blocks + Save/Preview gating restored
 - **Problem 1 (no warning dot on empty blocks):** Every newly-added step was tagged `IsNew = true`, and `IsValid` returned `true` while `IsNew` — but `IsNew` was never cleared anywhere (14 set-sites, 0 clear-sites). Result: an empty new Keyboard/Text block was permanently "valid", so the orange warning dot never appeared.
 - **Problem 2 (Save/Preview always unlocked):** The gates already existed (`CanPreview` → recursive `!s.IsValid`; `IsSaveReady` → `ErrorCount == 0 && CanPreview`), but fed `IsValid` that always returned `true` for new/Keyboard steps, so incomplete macros never grayed out the buttons.
