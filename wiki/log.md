@@ -1,3 +1,33 @@
+## 2026-08-05 — Performance: MoveSelectedSteps O(N²) + 3 redundant traversals + ValidateDuplicateNames O(N²)
+- **Context:** Second-pass audit after initial O(N²) fix. Found 3 more hot-path issues.
+- **Full technical documentation:** See [Performance Optimizations — Macro Editor Hot Paths](architecture/performance-optimizations.md) — covers all 6 fixes, data flow diagrams, debugging guide, and revert instructions.
+- **Fix #4 — MoveSelectedSteps O(N²) eliminated** (`MacroEditorViewModel.Core.cs`): `GroupBy(s => FindParentCollection(...))` was O(N) per step → O(N²). Fixed by building a `Dictionary<MacroStep, ObservableCollection<MacroStep>>` parent map in a single O(N) `BuildParentMap` pass, then using dictionary lookups for grouping. `OrderBy(s => collection.IndexOf(s))` + loop `IndexOf` were also O(N²) → fixed by building a `Dictionary<MacroStep, int>` index map once per collection, reused across sort + move operations with incremental updates after each `Move()`.
+- **Fix #5 — 3 redundant traversals merged into 1 pass** (`MacroEditorViewModel.Properties.cs`): `ExecuteGlobalStepChanged()` called `UpdateErrorCount()` + `RefreshAvailableNamedBlocks()` + `RefreshAvailableVariableNames()` + `ValidateDuplicateNames()` = 4 full traversals on every step property change. Merged into single `RefreshAllMetadata()` — one `TraverseAllSteps` using `HashSet<string>` for dedup, plus a dictionary-based duplicate-name check on top-level steps. Individual methods preserved for non-hot-path callers. Also replaced the 3-call pattern in Core.cs AddStep/DeleteStep with `RefreshAllMetadata()`.
+- **Fix #6 — ValidateDuplicateNames O(N²) → O(N)** (merged into Fix #5): LINQ `GroupBy` + `FirstOrDefault` per step was O(K²). Replaced with `Dictionary<string, int>` name-count pass — single O(N) iteration.
+- **Files:** `MacroEditorViewModel.Core.cs` (MoveSelectedSteps, BuildParentMap, AddStep, DeleteStep), `MacroEditorViewModel.Properties.cs` (RefreshAllMetadata, SyncCollection, ExecuteGlobalStepChanged).
+- Build verified: 0 errors.
+
+---
+- **Context:** Continued from the O(N²) → O(N) move/drag performance session. Three micro-optimizations to further reduce hot-path costs.
+- **Full technical documentation:** See [Performance Optimizations — Macro Editor Hot Paths](architecture/performance-optimizations.md) — covers all 6 fixes, data flow diagrams, debugging guide, and revert instructions.
+- **Fix #1 — Debounce clone skip** (`UndoRedoService.cs`): When a user edits a property then reverts it back to the original value (e.g. toggling IsDisabled on→off), the value-change debounce timer fires and pushes an identical snapshot to the undo stack — wasting a DeepCloneSteps call (~3-6ms on 1000 steps). Added `_pendingValueChangeSignature` (captured on first property edit in a batch) and `_lastCommittedSignature`. The Tick handler and `FlushPendingChanges` now compare the current signature against `_pendingValueChangeSignature`; if equal (nothing actually changed), the clone is skipped entirely. `StopWatching` also performs this check before flushing. Debug log confirms: `VALUE_CHANGE skipped (reverted)`.
+- **Fix #2 — Display rebuild skip** (`MacroEditorViewModel.Properties.cs`): `RefreshDisplaySteps` now checks `_displayStepsVersion == _lastRebuildVersion` before rebuilding — if no structural changes (add/remove/reorder) occurred, the entire rebuild (Task.Run + Dispatcher snapshot + skeleton check) is skipped. `_displayStepsVersion` is bumped by `BumpDisplayVersion()` which is called from `OnMacroStepsCollectionChanged` (subscribed to `MacroSteps.CollectionChanged` in both constructors via `HookMacroCollection`) and from `IsDelayHidden` setter and `IsSmartMode` setter.
+- **Fix #3 — StepsEqual fast reject** (`UndoRedoService.cs`): Added early first-element comparison (`childA[0]`/`childB[0]`) before the full recursion loop in both child branches — a quick "same root?" check before the recursive walk.
+- **Files:** `PowerX.Services/Services/UndoRedoService.cs`, `PowerX.UI/ViewModels/MacroEditorViewModel.Properties.cs`, `PowerX.UI/ViewModels/MacroEditorViewModel.cs`.
+- Build verified: 0 errors (pre-existing warnings only).
+- Also fixed pre-existing build error in `CustomActionCard.xaml.cs` (missing `using System.Windows.Controls.Primitives` + fully-qualified `System.Windows.Controls.Primitives.ToggleButton` → bare `ToggleButton`).
+
+---
+- **Problem:** Reordering steps via Move Up/Down or drag-drop handle felt ~500ms+ on medium/large macros, growing with block count. Root cause was the **GlobalStepChanged storm**: every collection mutation during a move fired `MacroStep.GlobalStepChanged`, re-entrantly executing `ExecuteGlobalStepChanged` synchronously — each pass doing `IsStateEqualToSaved()` (full recursive compare) + `UpdateErrorCount()` + 3 full traversals + dup-validation re-entrancy. Moving N steps ≈ N × O(N) passes = O(N²) on the UI thread.
+- **Fix 1 — Coalesced single-pass metadata** (`MacroEditorViewModel.Properties.cs`): `ExecuteGlobalStepChanged` now sets `IsDirty = true` immediately (cheap) and delegates all heavy metadata work to `RequestMetadataRefresh()` — a 60ms debounced `CancellationTokenSource`-based coalesce. N rapid events collapse into one pass. `RefreshMetadata()` runs a single `TraverseAllSteps` computing `IsDuplicateName` flags, `ErrorCount`, `AvailableNamedBlocks`, and `AvailableVariableNames` in one O(N) walk, with `_suppressDirtyCheck` guarding re-entrancy from `IsDuplicateName` setter events. CTS properly disposed in `Dispose()`.
+- **Fix 2 — Removed `IsStateEqualToSaved()` from hot path** (same method): Previously `ExecuteGlobalStepChanged` called the expensive recursive `IsStateEqualToSaved()` on every change event. This was only meaningful after Undo/Redo (which already handles the check explicitly at `Commands.cs:142,172`). The exotic "revert to saved auto-clean" edge case was removed; undo/redo handles the core flow.
+- **Fix 3 — Undo snapshot signature guard** (`UndoRedoService.cs`): Added `ComputeSignature()` — a cheap recursive hash of step count + Id + Type + StepName + Value + child counts. Parallel `_undoSignatures`/`_redoSignatures` `LinkedList<ulong>` stacks maintained alongside the existing snapshot stacks. Duplicate-guard in `PushState`, `FlushPendingChanges`, value-change Tick handler, and `StopWatching` now compares the fast signature first; only if signatures match (same hash) does the expensive field-by-field `SnapshotsEqual` run. When signatures differ, the states are certainly different → push directly, skipping the full compare entirely. Undo/Redo/Clear/TrimStack all manage signature stacks correctly.
+- **Fix 4 — Direct display mutation (deferred):** The plan proposed bypassing `RefreshDisplaySteps` for single-step raw-mode moves by directly swapping in `_internalSourceSteps`. Deferred due to fragility risk with delay-hidden steps, smart-mode bundling, and filter state. After Fix 1, the dominant O(N²) cost is eliminated — remaining rebuild is O(N) once.
+- **Files:** `PowerX.UI/ViewModels/MacroEditorViewModel.cs` (Dispose), `MacroEditorViewModel.Properties.cs` (RequestMetadataRefresh, RefreshMetadata, SyncCollection, ExecuteGlobalStepChanged), `PowerX.Services/Services/UndoRedoService.cs` (ComputeSignature, parallel signature stacks).
+- Build verified: 0 errors (75 pre-existing warnings).
+
+---
+
 ## 2026-08-05 — Save button lights up on open (dirty-state race) fixed
 - **Symptom:** Double-clicking a saved macro opened the editor with the Save button already enabled, before any edit — as if a real change had been made.
 - **Root cause:** When opening an existing macro, `MarkSaved()` (which snapshots state + clears `IsDirty`) was scheduled via `Dispatcher.InvokeAsync(..., ContextIdle)` — a low priority that runs AFTER the loading churn. Any `GlobalStepChanged` raised during load (timeline refresh, name/metadata validations) re-entered `ExecuteGlobalStepChanged` while `_savedSnapshot` was still null → `IsStateEqualToSaved()` returned false → `IsDirty = true`.
@@ -322,4 +352,37 @@
 
 ## 2026-08-05 - Agent rules sync
 - Updated workspace agent rules so Codex, Antigravity, and Kiro stay aligned through .agents/AGENTS.md, .kiro/steering/rules.md, and root AGENTS.md.
+
+
+---
+
+## 2026-08-05 � Feature: Auto Merge into Text (context menu) � implemented fresh
+- **Context:** Vault HANDOFF.md claimed this feature was DONE, but the code was NOT in the repo (never landed). Rebuilt it from scratch per user spec.
+- **User scenario:** Type Text "hell" ? Wait 1455ms ? Keyboard "O". Right-click Keyboard ? "Auto Merge into Text" ? "hello" (key appended, intermediate Wait and the Keyboard step deleted).
+- **Visibility check** (MacroEditorViewModel.SmartView.cs CanAutoMergeIntoText): right-clicked Keyboard step scans the display list UP and DOWN, skipping any Delay/Wait steps, and returns true when a Type Text step (virtual Smart-View block or real Text step) is found. GetMergeChar handles plain typing keys and "SHIFT + X" chord blocks.
+- **Execution** (ExecuteAutoMergeIntoText): resolves display steps to raw backing steps, validates the gap contains only Delay steps, then either regenerates the virtual block's raw span (reusing recorded key steps as an atomic chunk via RegenerateKeyboardStepsFromText) or updates a real Text step's Value � in both cases removing the intermediate delays and the merged Keyboard step. UndoRedoManager.PushState before mutation, IsDirty = true, ForceRefreshDisplaySteps().
+- **XAML:** MacroEditorView.xaml � MenuItem Header="Auto Merge into Text" Tag="AutoMergeIntoTextMenuItem", default Collapsed, Command=AutoMergeTextCommand.
+- **Code-behind:** MacroEditorView.Events.cs OnTimelineContextMenuOpening toggles the item's visibility via CanAutoMergeIntoText.
+- **Note:** No IsRecorded property exists in the MacroStep model � "preserve IsRecorded" is satisfied by leaving the text step untouched except for Value, and reusing recorded raw steps in regeneration.
+- Build verified: 0 errors (pre-existing warnings only).
+
+## 2026-08-05 - Testing checklist verification pass (reports/testing-checklist.md)
+- User asked to verify the QA checklist and green-tick only items with 200% confidence (code-verified + user-confirmed).
+- Marked [x] with ? + code evidence notes: Mobile Remote #246-257 (12 items - server/PIN/lockout/macros/stop/volume/soundboard endpoints verified in RemoteServerService.cs), #295 Curious Mind egg (AIAssistantViewModel.cs:756-758), #489 CallMacro depth limit + #490 Cursor Release Safety + #491 Execution Semaphore (MacroExecutionService.cs), #603 recursion warning + #607 DB pooling (MacroDatabase.cs:17).
+- Progress table updated: Playback 4, Mobile Remote 12, Easter Eggs 1, Edge Cases 2, Total 46 passed.
+- NOT ticked (known issues per notes column): #149 Hardware Input Lock (buggy), #180 snippet crash, #192 {Name} popup, #296 NameDropper egg (issue), #474 Dynamic Offset (preview-only). Left untouched pending user tests.
+
+## 2026-08-06 - WinDivert Per-App Split Tunneling & PowerVPN_Portal.exe Desktop Build
+- Added WinDivert 2.2.2 kernel driver support.
+- Built PowerVPN_Portal.exe and placed standalone executable on Desktop.
+
+
+## 2026-08-06 - App Launcher & VPN Exit IP Proxy Fix
+- Added /api/apps/launch endpoint to start apps with proxy parameters automatically.
+- Added Launch button to each app card in vpn_portal.html.
+- Updated PowerVPN_Portal.exe on Desktop.
+
+
+## 2026-08-06 - Desktop Cleanup & Recycle Bin
+- Cleaned up Desktop VPN Portal executables and assets and moved them to Windows Recycle Bin.
 

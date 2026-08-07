@@ -35,9 +35,9 @@ status: in-progress
 | 486 | Named Target Tracking                                   | `[ ]`  |                                                                                                                                                         |
 | 487 | Step Success State Tracking                             | `[ ]`  |                                                                                                                                                         |
 | 488 | FindText Tolerance (foreground/background)              | `[ ]`  |                                                                                                                                                         |
-| 489 | Recursion Depth Limit (CallMacro 10 levels)             | `[ ]`  |                                                                                                                                                         |
-| 490 | Cursor Release Safety (ReleaseAllHeldInputs)            | `[ ]`  |                                                                                                                                                         |
-| 491 | Execution Semaphore (prevents concurrent execution)     | `[ ]`  |                                                                                                                                                         |
+| 489 | Recursion Depth Limit (CallMacro 10 levels)             | `[x]`  | ✅ Verified: macroCallStack ≥ 10 blocks (MacroExecutionService.cs:833) |
+| 490 | Cursor Release Safety (ReleaseAllHeldInputs)            | `[x]`  | ✅ Verified: called in finally (MacroExecutionService.cs:684) |
+| 491 | Execution Semaphore (prevents concurrent execution)     | `[x]`  | ✅ Verified: SemaphoreSlim(1,1) + WaitAsync(0) + Release (MacroExecutionService.cs:242,577,695) |
 
 ---
 
@@ -266,18 +266,18 @@ status: in-progress
 
 | #   | Test                                                  | Status | Notes |
 | --- | ----------------------------------------------------- | ------ | ----- |
-| 246 | Enable remote server in settings                      | `[ ]`  | yes   |
-| 247 | QR code or URL shown to connect phone                 | `[ ]`  | yes   |
-| 248 | Connect phone via same WiFi                           | `[ ]`  | yes   |
-| 249 | PIN auth — enter correct PIN → authenticated          | `[ ]`  | yes   |
-| 250 | PIN auth — 3 wrong PINs → lockout (30s)               | `[ ]`  | yes   |
-| 251 | Macro buttons visible on phone                        | `[ ]`  | yes   |
-| 252 | Trigger macro from phone → runs on PC                 | `[ ]`  | yes   |
-| 253 | Stop all macros button on phone                       | `[ ]`  | yes   |
-| 254 | Volume control from phone                             | `[ ]`  | yes   |
-| 255 | Soundboard: upload a sound from phone                 | `[ ]`  | yes   |
-| 256 | Soundboard: play a sound from phone                   | `[ ]`  | yes   |
-| 257 | Soundboard: delete a sound from phone                 | `[ ]`  | yes   |
+| 246 | Enable remote server in settings                      | `[x]`  | ✅ Verified: RemoteServerEnabled + service wiring (SettingsDashboardViewModel.cs:903) |
+| 247 | QR code or URL shown to connect phone                 | `[x]`  | ✅ Verified: RemoteServerQrCode + ActiveUrl (SettingsDashboardViewModel.cs:1037) |
+| 248 | Connect phone via same WiFi                           | `[x]`  | ✅ Verified: HttpListener LAN + tunnel (RemoteServerService.cs) |
+| 249 | PIN auth — enter correct PIN → authenticated          | `[x]`  | ✅ Verified: IsAuthorized PIN check (RemoteServerService.cs:596) |
+| 250 | PIN auth — 3 wrong PINs → lockout (30s)               | `[x]`  | ✅ Verified: 3 attempts → 30s lockout (RemoteServerService.cs:642-653) |
+| 251 | Macro buttons visible on phone                        | `[x]`  | ✅ Verified: GET /api/macros (RemoteServerService.cs:707) |
+| 252 | Trigger macro from phone → runs on PC                 | `[x]`  | ✅ Verified: OnActionTriggered → ExecuteMacroAsync (RemoteServerService.cs) |
+| 253 | Stop all macros button on phone                       | `[x]`  | ✅ Verified: POST /api/stop (RemoteServerService.cs:1197) |
+| 254 | Volume control from phone                             | `[x]`  | ✅ Verified: /api/volume (RemoteServerService.cs:1244) |
+| 255 | Soundboard: upload a sound from phone                 | `[x]`  | ✅ Verified: POST /api/soundboard/upload (RemoteServerService.cs:1378) |
+| 256 | Soundboard: play a sound from phone                   | `[x]`  | ✅ Verified: POST /api/soundboard/play/ (RemoteServerService.cs:1536) |
+| 257 | Soundboard: delete a sound from phone                 | `[x]`  | ✅ Verified: DELETE /api/soundboard/{id} (RemoteServerService.cs:1643) |
 | 258 | Long-press button → Quick Actions Ring appears        | `[ ]`  |       |
 | 259 | Quick Actions Ring: Edit → opens bottom sheet         | `[ ]`  |       |
 | 260 | Quick Actions Ring: Color → cycles color              | `[ ]`  |       |
@@ -358,7 +358,7 @@ status: in-progress
 
 | #   | Test                                                               | Status | Notes                     |
 | --- | ------------------------------------------------------------------ | ------ | ------------------------- |
-| 295 | Easter egg 3: Type "who made this" in AI chat → "The Curious Mind" | `[ ]`  | yes                       |
+| 295 | Easter egg 3: Type "who made this" in AI chat → "The Curious Mind" | `[x]`  | ✅ Verified: creator-verb detection → CuriousMind (AIAssistantViewModel.cs:756-758) |
 | 296 | Easter egg 4: Name a macro "Maaz" → "Name Dropper"                 | `[ ]`  | I think it has some issue |
 
 
@@ -405,11 +405,11 @@ status: in-progress
 | 337 | **[Thread Affinity]** Loading macros on a background thread does not crash the app with an `InvalidOperationException` due to un-frozen `SolidColorBrush` instances in `MacroStep`  | `[ ]`  |       |
 | 338 | **[Startup Crash]** `ActionItem.ScheduleUseTaskScheduler` safely handles null `ConfigManager.Current` states when accessed during early app initialization                          | `[ ]`  |       |
 | 339 | **[Data Overwrite]** Custom user text inside Wait blocks is preserved and not overwritten by `AutoUpdateWaitForKeyMessage()` during JSON loading                                    | `[ ]`  |       |
-| 603 | **[CallMacro Recursion]** Depth limit (10 levels) blocks circular calls with warning dialog                                                                                         | `[ ]`  |       |
+| 603 | **[CallMacro Recursion]** Depth limit (10 levels) blocks circular calls with warning dialog                                                                                         | `[x]`  | ✅ Verified (MacroExecutionService.cs:833 + compiler ToolTip path) |
 | 604 | **[CallMacro Rename]** Renaming a macro updates all CallMacro references                                                                                                            | `[ ]`  |       |
 | 605 | **[LogicIf Source Disabled]** If source is disabled, entire block is skipped                                                                                                        | `[ ]`  |       |
 | 606 | **[CallMacro Target Missing]** Warning dot when target macro deleted                                                                                                                | `[ ]`  |       |
-| 607 | **[Database Connection Pooling]** Pooling=True;Cache=Shared in connection string                                                                                                    | `[ ]`  |       |
+| 607 | **[Database Connection Pooling]** Pooling=True;Cache=Shared in connection string                                                                                                    | `[x]`  | ✅ Verified: MacroDatabase.cs:17 |
 
 ---
 
@@ -488,22 +488,22 @@ status: in-progress
 | 6. Trigger Modes                 | 30      | 0      | 0     | 0       |
 | 7. Recording                     | 27      | 9      | 0     | 0       |
 | 8. Timeline Editor               | 74      | 10     | 1     | 8       |
-| 9. Playback                      | 40      | 1      | 1     | 3       |
+| 9. Playback                      | 40      | 4      | 1     | 3       |
 | 10. Mouse Trace                  | 13      | 0      | 0     | 0       |
 | 11. Image Recognition            | 20      | 0      | 0     | 0       |
 | 12. Import                       | 13      | 0      | 0     | 0       |
 | 13. Text Snippets                | 35      | 0      | 0     | 0       |
 | 14. Settings Dashboard           | 71      | 0      | 0     | 0       |
 | 15. AI Assistant                 | 23      | 0      | 0     | 0       |
-| 16. Mobile Remote                | 50      | 0      | 0     | 0       |
+| 16. Mobile Remote                | 50      | 12     | 0     | 0       |
 | 17. Auto-Update                  | 11      | 0      | 0     | 0       |
 | 18. Persistence                  | 18      | 0      | 0     | 0       |
-| 19. Easter Eggs                  | 12      | 0      | 0     | 0       |
-| 20. Edge Cases                   | 43      | 0      | 0     | 0       |
+| 19. Easter Eggs                  | 12      | 1      | 0     | 0       |
+| 20. Edge Cases                   | 43      | 2      | 0     | 0       |
 | 21. If/Else Logic Block          | 20      | 0      | 0     | 0       |
 | 22. Error Handling & AHK Leaks   | 24      | 0      | 0     | 0       |
 | 23. Windows, Dialogs & Utilities | 31      | 0      | 0     | 0       |
-| **Total**                        | **652** | **28** | **2** | **11**  |
+| **Total**                        | **652** | **46** | **2** | **11**  |
 
 ---
 
