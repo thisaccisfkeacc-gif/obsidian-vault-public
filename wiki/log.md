@@ -200,3 +200,10 @@
 ---
 
 *Audit by OpenCode agent. Correction applied: settled on a single Kotlin/Compose stack — no Flutter frontend exists. Focus shifted to genuinely missing on-phone key-entry screen.*
+---
+
+## 2026-08-07 — Master Blocklist Compilation
+
+Compiled scraped blocklist parts into Obsidian Vault/data/master_url_blocklist.json. Source: 1 part file (scraped_blocklist_part_1.json). 1053 domains (deduped, sorted), 88 active keywords, 23 keywords flagged for user review (common/ambiguous words that could cause false positives, e.g. phone, line, rate, legal, barely, young, wild, dirty). Keywords use word-boundary matching.
+
+*Audit by OpenCode agent.*

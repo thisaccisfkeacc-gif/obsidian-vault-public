@@ -17,19 +17,22 @@
 
 ---
 
-### 2. 🎬 Shorts & Reels — 5-Minute Timed Pass
+### 2. 🎬 Shorts & Reels — Timed Pass (Presets)
 - **Priority**: High
-- **What**: When Shorts/Reels is blocked, offer a temporary 5-minute pass; auto re-locks when it expires.
+- **What**: When Shorts/Reels is blocked, offer preset pass options: **5, 10, 15, 20 min, 1 hour**. Auto re-locks when the timer expires.
+- **No "Forever" option** — passes are always time-limited.
+- **Hidden during Master Lock** — passes only show when lockdown is OFF. Strict mode = zero exceptions.
 - **Status**: 🔴 Not built (targeted blocking already works)
 
 ---
 
-### 3. 🏦 Credit System (Weekly / 3-Day Pool)
+### 3. 🏦 Credit System (Weekly Pool)
 - **Priority**: High
-- **Decision pending**: ❓ 3-day vs 1-week refill period. (Leaning **week** — simpler mental model.)
+- **Decision made**: ✅ **1 hour per week** (refill every week). No "Forever" option.
 - **How it works**:
-  - User gets a **credit budget** per period (e.g. **30 min / week**).
+  - User gets a **1-hour credit budget per week**.
   - One shared pool at the top — can be used on any app, all at once or a little at a time.
+  - Pass presets: **5, 10, 15, 20 min, 1 hour** — each spends the corresponding credit amount.
   - When a block triggers (e.g. hit the "5 min per hour" limit), spend credit to extend.
   - Extension presets: **1 min, 5 min, 1 hour**.
   - **Session rule**: Credit may be spent only **once per block window (that 1-hour session)**.
