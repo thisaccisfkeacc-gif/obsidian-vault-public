@@ -356,14 +356,14 @@
 
 ---
 
-## 2026-08-05 — Feature: Auto Merge into Text (context menu) — implemented fresh
+## 2026-08-05 ï¿½ Feature: Auto Merge into Text (context menu) ï¿½ implemented fresh
 - **Context:** Vault HANDOFF.md claimed this feature was DONE, but the code was NOT in the repo (never landed). Rebuilt it from scratch per user spec.
 - **User scenario:** Type Text "hell" ? Wait 1455ms ? Keyboard "O". Right-click Keyboard ? "Auto Merge into Text" ? "hello" (key appended, intermediate Wait and the Keyboard step deleted).
 - **Visibility check** (MacroEditorViewModel.SmartView.cs CanAutoMergeIntoText): right-clicked Keyboard step scans the display list UP and DOWN, skipping any Delay/Wait steps, and returns true when a Type Text step (virtual Smart-View block or real Text step) is found. GetMergeChar handles plain typing keys and "SHIFT + X" chord blocks.
-- **Execution** (ExecuteAutoMergeIntoText): resolves display steps to raw backing steps, validates the gap contains only Delay steps, then either regenerates the virtual block's raw span (reusing recorded key steps as an atomic chunk via RegenerateKeyboardStepsFromText) or updates a real Text step's Value — in both cases removing the intermediate delays and the merged Keyboard step. UndoRedoManager.PushState before mutation, IsDirty = true, ForceRefreshDisplaySteps().
-- **XAML:** MacroEditorView.xaml — MenuItem Header="Auto Merge into Text" Tag="AutoMergeIntoTextMenuItem", default Collapsed, Command=AutoMergeTextCommand.
+- **Execution** (ExecuteAutoMergeIntoText): resolves display steps to raw backing steps, validates the gap contains only Delay steps, then either regenerates the virtual block's raw span (reusing recorded key steps as an atomic chunk via RegenerateKeyboardStepsFromText) or updates a real Text step's Value ï¿½ in both cases removing the intermediate delays and the merged Keyboard step. UndoRedoManager.PushState before mutation, IsDirty = true, ForceRefreshDisplaySteps().
+- **XAML:** MacroEditorView.xaml ï¿½ MenuItem Header="Auto Merge into Text" Tag="AutoMergeIntoTextMenuItem", default Collapsed, Command=AutoMergeTextCommand.
 - **Code-behind:** MacroEditorView.Events.cs OnTimelineContextMenuOpening toggles the item's visibility via CanAutoMergeIntoText.
-- **Note:** No IsRecorded property exists in the MacroStep model — "preserve IsRecorded" is satisfied by leaving the text step untouched except for Value, and reusing recorded raw steps in regeneration.
+- **Note:** No IsRecorded property exists in the MacroStep model ï¿½ "preserve IsRecorded" is satisfied by leaving the text step untouched except for Value, and reusing recorded raw steps in regeneration.
 - Build verified: 0 errors (pre-existing warnings only).
 
 ## 2026-08-05 - Testing checklist verification pass (reports/testing-checklist.md)
