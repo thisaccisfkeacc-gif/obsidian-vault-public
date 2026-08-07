@@ -1,7 +1,7 @@
 ---
 type: prd
 status: active
-summary: Master Product Requirement Document for Lockin (Flutter UI + Native Kotlin Hybrid)
+summary: Master Product Requirement Document for Lockin (Pure Native Kotlin Android)
 last_updated: 2026-08-07
 ---
 
@@ -15,7 +15,7 @@ last_updated: 2026-08-07
 
 * **Primary Goal**: Combat phone & adult content addiction through un-bypassable locking rules, intentional friction, and smart filtering.
 * **Key Differentiator**: Solves the core flaw of existing market apps (like StayFocusd) by eliminating bypass loopholes (preventing permission disabling, force stops, or settings tampering) while offering deep customization.
-* **Tech Architecture**: Hybrid Flutter (Frontend / UI, 120fps) + Native Kotlin (Backend Services, Accessibility Service, Device Admin API).
+* **Tech Architecture**: Pure Native Kotlin (Jetpack Compose UI + Backend Services, Accessibility Service, Device Admin API).
 * **Reference Codebase**: Native Kotlin reference files located at `C:\Users\Maaz\Projects\StayLocked\Reef\` (`AppBlockManager.kt`, `BlockerService.kt`, `AppBlockScreen.kt`).
 
 ---
