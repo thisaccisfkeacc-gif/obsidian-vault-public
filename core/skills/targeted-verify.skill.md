@@ -216,4 +216,4 @@ Round 3: 0 bugs   ← done! 🎉
 - [[bug-triage]] — Classification and grouping of bugs
 - [[bug-fixing]] — The verified bug-fix workflow
 - [[qa-testing]] — The 70-test QA checklist and testing workflow
-- [[testing-checklist]] — Master QA checklist
+- [[reports/testing-checklist]] — Master QA checklist

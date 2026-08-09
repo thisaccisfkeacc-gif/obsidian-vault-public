@@ -155,7 +155,7 @@ The Manager agent will:
 
 ## Related Pages
 
-- [[testing-checklist]] — The actual 70-test checklist
+- [[reports/testing-checklist]] — The actual 70-test checklist
 - [[bug-backlog]] — Where discovered bugs are tracked
 - [[pre-ship-critical-bugs]] — Bugs that must be fixed before packaging
 - [[sprint-pipeline]] — The full Sprint Pipeline orchestration skill

@@ -398,5 +398,5 @@ Too many small questions break the user's focus. The agent should make small dec
 - [[qa-testing]] — The 70-test QA checklist and testing workflow
 - [[bug-fixing]] — The verified bug-fix workflow for each individual fix
 - [[multi-agent-system]] — Multi-agent coordination (Manager/Worker pattern)
-- [[testing-checklist]] — Master QA checklist
+- [[reports/testing-checklist]] — Master QA checklist
 - [[parking-lot]] — Ideas Parking Lot for non-urgent touch-ups
