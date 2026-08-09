@@ -158,6 +158,15 @@ status: active
 
 ---
 
+## 🔒 Lockin Security & Watchdog
+
+| Page | Description |
+|------|-------------|
+| [[watchdog-prompt]] | 🤖 Agent Round-Robin Watchdog Improvement Prompt |
+| [[watchdog-response]] | 🛡️ Comprehensive & Simplified Anti-Tamper Watchdog Optimization Analysis |
+
+---
+
 ## 📄 Meta
 
 | Page | Description |
@@ -166,4 +175,5 @@ status: active
 
 ---
 
-*Last updated: 2026-07-15 — Synced index with actual files. Removed 8 dead links (testing-checklist, monetization-plan, website-improvement-ideas, github-setup, branching-strategy, website-content-rules, whatsnew-update-guide, ahk-uia-inspector-upgrade, app-screenshots). Added 10 missing pages. Added Audits section.*
+*Last updated: 2026-08-08 — Added StayLocked Watchdog Prompt & Response entries.*
+
